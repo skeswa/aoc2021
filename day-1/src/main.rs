@@ -86,7 +86,7 @@ async fn read_sonar_sweep_depths(sonar_sweep_file_path: &str) -> Result<Vec<i32>
     let sonar_sweep_file_contents = String::from_utf8_lossy(&raw_sonar_sweep_file_contents);
 
     let sonar_sweep_depths = sonar_sweep_file_contents
-        .split("\n")
+        .lines()
         .map(|raw_depth| {
             raw_depth
                 .parse::<i32>()
