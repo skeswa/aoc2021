@@ -3,6 +3,7 @@ extern crate tokio;
 
 use anyhow::{Context, Error, Result};
 use std::env::current_dir;
+use std::iter;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 
@@ -10,9 +11,26 @@ use tokio::io::AsyncReadExt;
 async fn main() -> Result<()> {
     let sonar_sweep_depths = read_sonar_sweep_depths("files/input.txt").await?;
 
-    println!("Hello, world!\n{:?}", sonar_sweep_depths);
+    let number_of_depth_increases = pairwise(sonar_sweep_depths)
+        .filter(|(maybe_prev, next)| match maybe_prev {
+            Some(prev) => next > prev,
+            _ => false,
+        })
+        .map(|(_, next)| next)
+        .count();
+    println!("Number of depth increases: {}", number_of_depth_increases);
 
     Ok(())
+}
+
+/// Returns a new [Iterator] that pairs each element of the given iterator with
+/// the element before it in a tuple resembling `(prev, next)`.
+fn pairwise<I>(iterator: I) -> impl Iterator<Item = (Option<I::Item>, I::Item)>
+where
+    I: IntoIterator + Clone,
+{
+    let left = iter::once(None).chain(iterator.clone().into_iter().map(Some));
+    left.zip(iterator)
 }
 
 /// Reads the contents of the "sonar sweep" input file as a newline-separated
