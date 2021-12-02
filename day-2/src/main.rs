@@ -12,9 +12,25 @@ use tokio::io::AsyncReadExt;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let submarine_movements = read_submarine_movements("files/sample.txt").await?;
+    let submarine_movements = read_submarine_movements("files/input.txt").await?;
 
-    println!("Hello, world!\n{:?}", submarine_movements);
+    let resulting_position = submarine_movements
+        .iter()
+        .map(|movement| match movement {
+            Movement::Down(magnitude) => (0, *magnitude),
+            Movement::Up(magnitude) => (0, -1 * *magnitude),
+            Movement::Forward(magnitude) => (*magnitude, 0),
+        })
+        .reduce(|a, b| (a.0 + b.0, a.1 + b.1))
+        .unwrap_or((0, 0));
+
+    println!("# of movements:\t\t{}", submarine_movements.len());
+    println!("Horizontal position:\t{}", resulting_position.0);
+    println!("Depth:\t\t\t{}", resulting_position.1);
+    println!(
+        "\nHorizontal position ✕ Depth = {}",
+        resulting_position.0 * resulting_position.1
+    );
 
     Ok(())
 }
