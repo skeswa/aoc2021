@@ -7,4 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.51"
+itertools = "0.10.1"
 tokio = { version = "1.14.0", features = ["full"] }
+
+[features]
