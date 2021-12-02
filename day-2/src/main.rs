@@ -14,7 +14,9 @@ use tokio::io::AsyncReadExt;
 async fn main() -> Result<()> {
     let submarine_movements = read_submarine_movements("files/input.txt").await?;
 
-    let resulting_position = submarine_movements
+    println!("# of movements: {}\n", (&submarine_movements).len());
+
+    let aimless_position = submarine_movements
         .iter()
         .map(|movement| match movement {
             Movement::Down(magnitude) => (0, *magnitude),
@@ -24,13 +26,35 @@ async fn main() -> Result<()> {
         .reduce(|a, b| (a.0 + b.0, a.1 + b.1))
         .unwrap_or((0, 0));
 
-    println!("# of movements:\t\t{}", submarine_movements.len());
-    println!("Horizontal position:\t{}", resulting_position.0);
-    println!("Depth:\t\t\t{}", resulting_position.1);
+    println!("Aimless horizontal position:\t{}", aimless_position.0);
+    println!("Aimless depth:\t\t\t{}", aimless_position.1);
     println!(
-        "\nHorizontal position ✕ Depth = {}",
-        resulting_position.0 * resulting_position.1
+        "Product:\t\t\t{}\n",
+        aimless_position.0 * aimless_position.1
     );
+
+    let mut aim = 0;
+    let mut depth = 0;
+    let mut horizontal_position = 0;
+
+    for submarine_movement in submarine_movements {
+        match submarine_movement {
+            Movement::Down(magnitude) => {
+                aim += magnitude;
+            }
+            Movement::Up(magnitude) => {
+                aim -= magnitude;
+            }
+            Movement::Forward(magnitude) => {
+                horizontal_position += magnitude;
+                depth += aim * magnitude;
+            }
+        }
+    }
+
+    println!("Horizontal position:\t\t{}", horizontal_position);
+    println!("Depth:\t\t\t\t{}", depth);
+    println!("Product:\t\t\t{}\n", horizontal_position * depth);
 
     Ok(())
 }
