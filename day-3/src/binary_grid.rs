@@ -2,13 +2,18 @@ use anyhow::{Context, Result};
 use bit::BitAggregator;
 pub use bit::{Bit, BitSequence};
 
+/// 2D grid of ones and zeroes.
 #[derive(Debug, PartialEq)]
 pub struct BinaryGrid {
+    /// 2D [Vec] of [Bit] instances.
     bits: Vec<Vec<Bit>>,
+    /// Number of columns in this grid.
     width: usize,
 }
 
 impl BinaryGrid {
+    /// Interprets a newline-delimited [str] of binary numbers as a
+    /// [BinaryGrid].
     pub fn deserialize(serialized_binary_grid: &str) -> Result<BinaryGrid> {
         let bits = serialized_binary_grid
             .lines()
