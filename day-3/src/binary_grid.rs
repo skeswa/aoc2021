@@ -3,12 +3,25 @@ use bit::BitAggregator;
 pub use bit::{Bit, BitSequence};
 
 /// 2D grid of ones and zeroes.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BinaryGrid {
     /// 2D [Vec] of [Bit] instances.
     bits: Vec<Vec<Bit>>,
     /// Number of columns in this grid.
     width: usize,
+}
+
+pub struct BinaryGridCullOptions {
+    pub rows_with_bits_matching: Bit,
+    pub at_index: usize,
+}
+
+impl From<Vec<Vec<Bit>>> for BinaryGrid {
+    fn from(bits: Vec<Vec<Bit>>) -> Self {
+        let width = bits.iter().map(|row| row.len()).max().unwrap_or(0);
+
+        BinaryGrid { bits, width }
+    }
 }
 
 impl BinaryGrid {
@@ -33,9 +46,42 @@ impl BinaryGrid {
                 )
             })?;
 
-        let width = bits.iter().map(|row| row.len()).max().unwrap_or(0);
+        Ok(BinaryGrid::from(bits))
+    }
 
-        Ok(BinaryGrid { bits, width })
+    /// Returns how many columns of bits this [BinaryGrid] has.
+    pub fn columns(&self) -> usize {
+        self.width
+    }
+
+    pub fn cull(
+        &self,
+        BinaryGridCullOptions {
+            at_index: column_index,
+            rows_with_bits_matching: filter_bit,
+        }: BinaryGridCullOptions,
+    ) -> BinaryGrid {
+        if column_index >= self.width {
+            return BinaryGrid {
+                bits: vec![],
+                width: 0,
+            };
+        }
+
+        let bits = self
+            .bits
+            .iter()
+            .filter(|bits| bits[column_index] == filter_bit)
+            .map(Vec::clone)
+            .collect::<Vec<Vec<Bit>>>();
+
+        BinaryGrid::from(bits)
+    }
+
+    /// Returns the least common [Bit] in the column indicated by
+    /// `column_index`, returning [Option::None] if no such [Bit] exists.
+    pub fn least_common_bit_in_column(&self, column_index: usize) -> Option<Bit> {
+        self.aggregate_bits_in_column(column_index).least_common()
     }
 
     /// Returns a [BitSequence] of the least common bit in each column.
@@ -45,11 +91,31 @@ impl BinaryGrid {
             .collect::<BitSequence>()
     }
 
+    /// Returns the most common [Bit] in the column indicated by `column_index`,
+    /// returning [Option::None] if no such [Bit] exists.
+    pub fn most_common_bit_in_column(&self, column_index: usize) -> Option<Bit> {
+        self.aggregate_bits_in_column(column_index).most_common()
+    }
+
     /// Returns a [BitSequence] of the most common bit in each column.
     pub fn most_common_bit_in_each_column(&self) -> BitSequence {
         (0..self.width)
             .map(|column_index| self.most_common_bit_in_column(column_index).unwrap())
             .collect::<BitSequence>()
+    }
+
+    /// Returns the [BitSequence] of the row indicated by `row_index`.
+    pub fn row(&self, row_index: usize) -> Option<BitSequence> {
+        if row_index >= self.bits.len() {
+            return None;
+        }
+
+        Some(BitSequence::from(self.bits[row_index].clone()))
+    }
+
+    /// Returns how many rows of bits this [BinaryGrid] has.
+    pub fn rows(&self) -> usize {
+        self.bits.len()
     }
 
     /// Summarizes an entire column of [Bit] in a [BitAggregator], returning
@@ -66,18 +132,6 @@ impl BinaryGrid {
             .reduce(BitAggregator::combine)
             .unwrap_or_else(BitAggregator::zero)
     }
-
-    /// Returns the most common [Bit] in the column indicated by `column_index`,
-    /// returning [Option::None] if no such [Bit] exists.
-    fn most_common_bit_in_column(&self, column_index: usize) -> Option<Bit> {
-        self.aggregate_bits_in_column(column_index).most_common()
-    }
-
-    /// Returns the least common [Bit] in the column indicated by
-    /// `column_index`, returning [Option::None] if no such [Bit] exists.
-    fn least_common_bit_in_column(&self, column_index: usize) -> Option<Bit> {
-        self.aggregate_bits_in_column(column_index).least_common()
-    }
 }
 
 /// Module encupsulating bitwise logic used by the [super::BinaryGrid].
@@ -88,7 +142,7 @@ mod bit {
     /// Character representing bitwise zero.
     const ZERO: char = '0';
 
-    /// Enumerates both possible vlaues for a bit.
+    /// Enumerates both possible values for a bit.
     #[derive(Clone, Copy, Debug, PartialEq)]
     pub enum Bit {
         /// Enum representation of a bitwise one.
@@ -185,9 +239,25 @@ mod bit {
         }
     }
 
+    impl From<Vec<Bit>> for BitSequence {
+        fn from(bits: Vec<Bit>) -> Self {
+            BitSequence(bits)
+        }
+    }
+
     impl FromIterator<Bit> for BitSequence {
         fn from_iter<T: IntoIterator<Item = Bit>>(iter: T) -> Self {
             BitSequence(iter.into_iter().collect::<Vec<Bit>>())
+        }
+    }
+
+    impl<'a> IntoIterator for &'a BitSequence {
+        type Item = &'a Bit;
+
+        type IntoIter = core::slice::Iter<'a, Bit>;
+
+        fn into_iter(self) -> Self::IntoIter {
+            self.0.iter()
         }
     }
 }
