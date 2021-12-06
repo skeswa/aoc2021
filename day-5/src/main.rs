@@ -4,14 +4,17 @@ use std::env::current_dir;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 
-use crate::hydrothermal_vent_lines::{Coordinate, Traceable};
+use crate::coordinate::Coordinate;
+use crate::traceable::Traceable;
 
 extern crate anyhow;
 extern crate lazy_static;
 extern crate regex;
 extern crate tokio;
 
+mod coordinate;
 mod hydrothermal_vent_lines;
+mod traceable;
 
 #[tokio::main]
 async fn main() -> Result<()> {
