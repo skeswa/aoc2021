@@ -20,9 +20,10 @@ mod traceable;
 async fn main() -> Result<()> {
     let hydrothermal_vent_lines = read_hydrothermal_vent_lines("files/input.txt").await?;
 
-    let coordinates_with_multiple_overlapping_vent_lines = hydrothermal_vent_lines
-        .without_untraceable_ven_lines()
-        .trace()?
+    let mut are_diagonals_allowed = false;
+    let mut coordinates_with_multiple_overlapping_vent_lines = hydrothermal_vent_lines
+        .without_untraceable_vent_lines(are_diagonals_allowed)
+        .trace(are_diagonals_allowed)?
         .aggregate()
         .iter()
         .filter(|(_, coordinate_count)| **coordinate_count > 1)
@@ -30,7 +31,22 @@ async fn main() -> Result<()> {
         .collect::<Vec<Coordinate>>();
 
     println!(
-        "Coordinates with multiple overlapping vent lines: {}",
+        "Coordinates with multiple overlapping straight vent lines: {}",
+        coordinates_with_multiple_overlapping_vent_lines.len(),
+    );
+
+    are_diagonals_allowed = true;
+    coordinates_with_multiple_overlapping_vent_lines = hydrothermal_vent_lines
+        .without_untraceable_vent_lines(are_diagonals_allowed)
+        .trace(are_diagonals_allowed)?
+        .aggregate()
+        .iter()
+        .filter(|(_, coordinate_count)| **coordinate_count > 1)
+        .map(|(coordinate, _)| *coordinate)
+        .collect::<Vec<Coordinate>>();
+
+    println!(
+        "Coordinates with multiple overlapping straight or diagonal vent lines: {}",
         coordinates_with_multiple_overlapping_vent_lines.len(),
     );
 

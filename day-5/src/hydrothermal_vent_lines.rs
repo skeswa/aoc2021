@@ -57,9 +57,9 @@ impl HydrothermalVentLine {
         })
     }
 
-    /// Returns `true` if this [HydrothermalVentLine] can be traced.
-    pub fn is_traceable(&self) -> bool {
-        self.is_horizontal() || self.is_vertical()
+    /// Returns `true` if this [HydrothermalVentLine] is a diagonal line.
+    fn is_diagonal(&self) -> bool {
+        (self.end.x - self.beginning.x).abs() == (self.end.y - self.beginning.y).abs()
     }
 
     /// Returns `true` if this [HydrothermalVentLine] is a horizontal line.
@@ -74,8 +74,12 @@ impl HydrothermalVentLine {
 }
 
 impl Traceable for HydrothermalVentLine {
-    fn trace(&self) -> Result<Coordinates> {
-        if !self.is_traceable() {
+    fn can_trace(&self, are_diagonals_allowed: bool) -> bool {
+        self.is_horizontal() || self.is_vertical() || (are_diagonals_allowed && self.is_diagonal())
+    }
+
+    fn trace(&self, are_diagonals_allowed: bool) -> Result<Coordinates> {
+        if !self.can_trace(are_diagonals_allowed) {
             return Err(anyhow!("{:?} is untraceable", self));
         }
 
@@ -135,11 +139,18 @@ impl HydrothermalVentLines {
 
     /// Returns a clone of this [HydrothermalVentLines] sans any untraceable
     /// hydrothermal vent lines.
-    pub fn without_untraceable_ven_lines(&self) -> HydrothermalVentLines {
+    ///
+    /// Parameters:
+    /// *   `are_diagonals_allowed`\
+    ///     Is `true` if diagonal lines are considered to be traceable.
+    pub fn without_untraceable_vent_lines(
+        &self,
+        are_diagonals_allowed: bool,
+    ) -> HydrothermalVentLines {
         HydrothermalVentLines(
             self.0
                 .iter()
-                .filter(|vent_line| vent_line.is_traceable())
+                .filter(|vent_line| vent_line.can_trace(are_diagonals_allowed))
                 .map(|vent_line| vent_line.to_owned())
                 .collect(),
         )
@@ -147,11 +158,15 @@ impl HydrothermalVentLines {
 }
 
 impl Traceable for HydrothermalVentLines {
-    fn trace(&self) -> Result<Coordinates> {
+    fn can_trace(&self, _: bool) -> bool {
+        true
+    }
+
+    fn trace(&self, are_diagonals_allowed: bool) -> Result<Coordinates> {
         let coordinates = self
             .0
             .iter()
-            .map(HydrothermalVentLine::trace)
+            .map(|vent_line| vent_line.trace(are_diagonals_allowed))
             .collect::<Result<Coordinates>>()
             .context("Cannot trace every hydrothermal vent line")?;
 
