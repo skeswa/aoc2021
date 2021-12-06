@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context, Result};
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 lazy_static! {
     /// Regular expression designed to match empty lines.
@@ -58,6 +58,22 @@ impl BingoGame {
             number_selections,
         })
     }
+
+    /// Plays Bingo, returning a tuple of the winning number and the
+    /// [BingoGameBoard] that won.
+    pub fn play(&mut self) -> Option<(u8, BingoGameBoard)> {
+        for number in self.number_selections.iter() {
+            for board in self.boards.iter_mut() {
+                board.select(*number);
+
+                if board.has_bingo() {
+                    return Some((*number, board.clone()));
+                }
+            }
+        }
+
+        None
+    }
 }
 
 /// Represents a single bingo game.
@@ -67,6 +83,8 @@ pub struct BingoGameBoard {
     index_by_number: HashMap<u8, usize>,
     /// Sequence of numbers selected for this bingo game.
     numbers: Vec<u8>,
+    /// Indices of all selected numbers in this [BingoGameBoard].
+    selected_number_indices: Vec<usize>,
 }
 
 impl BingoGameBoard {
@@ -99,6 +117,89 @@ impl BingoGameBoard {
         Ok(BingoGameBoard {
             index_by_number,
             numbers,
+            selected_number_indices: Vec::new(),
         })
+    }
+
+    /// Returns a [Vec] containing all of the unselected numbers on this
+    /// [BingoGameBoard].
+    pub fn unselected_numbers(&self) -> Vec<u8> {
+        let selected_number_indices =
+            HashSet::<usize>::from_iter(self.selected_number_indices.iter().cloned());
+
+        self.numbers
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| !selected_number_indices.contains(i))
+            .map(|(_, number)| *number)
+            .collect::<Vec<u8>>()
+    }
+
+    /// Returns `true` if this [BingoGameBoard] has a bingo.
+    fn has_bingo(&self) -> bool {
+        self.has_horizontal_stretch() || self.has_vertical_stretch()
+    }
+
+    /// Returns `true` if this [BingoGameBoard] has five numbers selected in a
+    /// row.
+    fn has_horizontal_stretch(&self) -> bool {
+        let mut number_of_consecutive_indices = 0;
+        let mut previous_index = 0;
+
+        for index in self.selected_number_indices.iter() {
+            if number_of_consecutive_indices > 0 &&
+            // Reset the concescutive count when we go to the next row.
+            index % 5 != 0 && (index - previous_index) == 1
+            {
+                number_of_consecutive_indices += 1;
+            } else {
+                number_of_consecutive_indices = 1;
+            }
+
+            if number_of_consecutive_indices == 5 {
+                return true;
+            }
+
+            previous_index = *index;
+        }
+
+        return false;
+    }
+
+    /// Returns `true` if this [BingoGameBoard] has five numbers selected in a
+    /// column.
+    fn has_vertical_stretch(&self) -> bool {
+        let mut column_totals: [usize; 5] = [0; 5];
+        let mut previous_column_indices: [usize; 5] = [0; 5];
+
+        for index in self.selected_number_indices.iter() {
+            let column_index = *index % 5;
+
+            // Reset the column total to 0 when column values are not
+            // consecutive.
+            if column_totals[column_index] != 0 && index - previous_column_indices[column_index] > 5
+            {
+                column_totals[column_index] = 0;
+            }
+
+            column_totals[column_index] += 1;
+            previous_column_indices[column_index] = *index;
+            if column_totals[column_index] == 5 {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// Selects the specified `number` on this [BingoGameBoard].
+    fn select(&mut self, number: u8) {
+        let index = self.index_by_number.get(&number);
+        if index.is_none() {
+            return;
+        }
+
+        self.selected_number_indices.push(*index.unwrap());
+        self.selected_number_indices.sort();
     }
 }
