@@ -13,9 +13,10 @@ use tokio::io::AsyncReadExt;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let mut bingo_game = read_bingo_game("files/input.txt").await?;
+    let bingo_game = read_bingo_game("files/input.txt").await?;
 
-    let (winning_number, winning_board) = bingo_game.play().context("There was no winner!")?;
+    let (winning_number, winning_board) =
+        bingo_game.clone().play().context("There was no winner!")?;
     let winning_board_sum: u32 = winning_board
         .unselected_numbers()
         .iter()
@@ -27,6 +28,24 @@ async fn main() -> Result<()> {
     println!(
         "Product:\t\t{}",
         (winning_number as u32) * winning_board_sum
+    );
+
+    let (last_winning_number, last_winning_board) = bingo_game
+        .clone()
+        .play_exhaustively()
+        .context("There wasn't a last winner!")?;
+    let last_winning_board_sum: u32 = last_winning_board
+        .unselected_numbers()
+        .iter()
+        .map(|number| *number as u32)
+        .sum();
+
+    println!();
+    println!("Last winning number:\t{}", last_winning_number);
+    println!("Last winning board sum:\t{:?}", last_winning_board_sum);
+    println!(
+        "Product:\t\t{}",
+        (last_winning_number as u32) * last_winning_board_sum
     );
 
     Ok(())

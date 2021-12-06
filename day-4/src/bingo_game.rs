@@ -59,17 +59,48 @@ impl BingoGame {
         })
     }
 
-    /// Plays Bingo, returning a tuple of the winning number and the
+    /// Plays Bingo, returning a tuple of the **first** winning number and the
     /// [BingoGameBoard] that won.
     pub fn play(&mut self) -> Option<(u8, BingoGameBoard)> {
         for number in self.number_selections.iter() {
             for board in self.boards.iter_mut() {
                 board.select(*number);
 
-                if board.has_bingo() {
+                if board.has_bingo {
                     return Some((*number, board.clone()));
                 }
             }
+        }
+
+        None
+    }
+
+    /// Plays Bingo, returning a tuple of the **last** winning number and the
+    /// [BingoGameBoard] that won.
+    pub fn play_exhaustively(&mut self) -> Option<(u8, BingoGameBoard)> {
+        let mut boards = self.boards.clone();
+        let mut number_index = 0;
+
+        while boards.len() > 0 && number_index < self.number_selections.len() {
+            let number = self.number_selections[number_index];
+
+            let mut board_index = 0;
+            while board_index < boards.len() {
+                let board = &mut boards[board_index];
+                board.select(number);
+
+                if board.has_bingo {
+                    if boards.len() == 1 {
+                        return Some((number, boards[0].clone()));
+                    }
+
+                    boards.remove(board_index);
+                } else {
+                    board_index += 1;
+                }
+            }
+
+            number_index += 1;
         }
 
         None
@@ -79,6 +110,8 @@ impl BingoGame {
 /// Represents a single bingo game.
 #[derive(Clone, Debug, PartialEq)]
 pub struct BingoGameBoard {
+    /// `true` if this is a winning [BingoGameBoard].
+    has_bingo: bool,
     /// Numbers in this [BingoGameBoard] indexed by their respective indices with in [numbers].
     index_by_number: HashMap<u8, usize>,
     /// Sequence of numbers selected for this bingo game.
@@ -115,6 +148,7 @@ impl BingoGameBoard {
             .collect::<HashMap<u8, usize>>();
 
         Ok(BingoGameBoard {
+            has_bingo: false,
             index_by_number,
             numbers,
             selected_number_indices: Vec::new(),
@@ -133,11 +167,6 @@ impl BingoGameBoard {
             .filter(|(i, _)| !selected_number_indices.contains(i))
             .map(|(_, number)| *number)
             .collect::<Vec<u8>>()
-    }
-
-    /// Returns `true` if this [BingoGameBoard] has a bingo.
-    fn has_bingo(&self) -> bool {
-        self.has_horizontal_stretch() || self.has_vertical_stretch()
     }
 
     /// Returns `true` if this [BingoGameBoard] has five numbers selected in a
@@ -201,5 +230,9 @@ impl BingoGameBoard {
 
         self.selected_number_indices.push(*index.unwrap());
         self.selected_number_indices.sort();
+
+        if !self.has_bingo && (self.has_horizontal_stretch() || self.has_vertical_stretch()) {
+            self.has_bingo = true;
+        }
     }
 }
