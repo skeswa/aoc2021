@@ -4,6 +4,8 @@ use std::env::current_dir;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 
+use crate::hydrothermal_vent_lines::{Coordinate, Traceable};
+
 extern crate anyhow;
 extern crate lazy_static;
 extern crate regex;
@@ -13,9 +15,21 @@ mod hydrothermal_vent_lines;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let hydrothermal_vent_lines = read_hydrothermal_vent_lines("files/sample.txt").await?;
+    let hydrothermal_vent_lines = read_hydrothermal_vent_lines("files/input.txt").await?;
 
-    println!("Hello, world! {:?}", hydrothermal_vent_lines);
+    let coordinates_with_multiple_overlapping_vent_lines = hydrothermal_vent_lines
+        .without_untraceable_ven_lines()
+        .trace()?
+        .aggregate()
+        .iter()
+        .filter(|(_, coordinate_count)| **coordinate_count > 1)
+        .map(|(coordinate, _)| *coordinate)
+        .collect::<Vec<Coordinate>>();
+
+    println!(
+        "Coordinates with multiple overlapping vent lines: {}",
+        coordinates_with_multiple_overlapping_vent_lines.len(),
+    );
 
     Ok(())
 }
